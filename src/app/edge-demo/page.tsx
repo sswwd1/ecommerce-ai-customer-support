@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createClient } from "@/lib/supabase/client";
+import { signOut } from "@/app/actions";
 
 type FunctionResponse = {
   message?: string;
@@ -897,13 +898,23 @@ export default function EdgeDemoPage() {
               每段对话独立保存。AI 会结合当前会话最近 20 条消息理解上下文。
             </p>
           </div>
-          <button
-            type="button"
-            onClick={startNewConversation}
-            className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
-          >
-            + 新建对话
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={startNewConversation}
+              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              + 新建对话
+            </button>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+              >
+                退出登录
+              </button>
+            </form>
+          </div>
         </div>
 
         {errorMessage ? (
@@ -987,7 +998,8 @@ export default function EdgeDemoPage() {
                     type="submit"
                     disabled={searchingConversations || !conversationSearch.trim()}
                     className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50"
-                  >
+
+[executed on device: conressdeMacBook-Pro.local (28fd04e3-c471-4b7a-a8e5-5047aefef284)]                  >
                     {searchingConversations ? "搜索中…" : "搜索"}
                   </button>
                   {searchResults !== null ? (
@@ -998,3 +1010,280 @@ export default function EdgeDemoPage() {
                     >
                       清除
                     </button>
+                  ) : null}
+                </div>
+              </form>
+              {conversations.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">还没有聊天记录。</p>
+              ) : (
+                <div className="mt-3 space-y-1">
+                  {(searchResults ?? conversations).map((item) => (
+                    <div
+                      key={item.id}
+                      className={`group flex items-start gap-1 rounded-xl p-2 ${activeConversationId === item.id ? "bg-indigo-50" : "hover:bg-slate-50"}`}
+                    >
+                      {editingConversationId === item.id ? (
+                        <form
+                          className="min-w-0 flex-1 space-y-2"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void saveConversationTitle(item.id);
+                          }}
+                        >
+                          <input
+                            autoFocus
+                            value={editingTitle}
+                            onChange={(event) => setEditingTitle(event.target.value)}
+                            maxLength={120}
+                            aria-label="新的对话标题"
+                            className="w-full rounded-lg border border-indigo-300 px-2 py-1.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="submit"
+                              disabled={savingTitle || !editingTitle.trim()}
+                              className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+                            >
+                              {savingTitle ? "保存中…" : "保存"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={savingTitle}
+                              onClick={() => {
+                                setEditingConversationId(null);
+                                setEditingTitle("");
+                              }}
+                              className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+                            >
+                              取消
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openConversation(item.id)}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <span className="block truncate text-sm font-medium text-slate-800">
+                            {item.title}
+                          </span>
+                          <span className="mt-1 block text-xs text-slate-400">
+                            {new Date(item.updated_at).toLocaleDateString()}
+                          </span>
+                        </button>
+                      )}
+                      {editingConversationId !== item.id ? (
+                        <button
+                          type="button"
+                          onClick={() => beginRenameConversation(item)}
+                          aria-label={`重命名对话：${item.title}`}
+                          className="rounded-md px-2 py-1 text-xs text-slate-400 hover:bg-indigo-50 hover:text-indigo-600"
+                        >
+                          改名
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => deleteConversation(item.id)}
+                        aria-label={`删除对话：${item.title}`}
+                        className="rounded-md px-2 py-1 text-xs text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  ))}
+                  {searchResults !== null && searchResults.length === 0 ? (
+                    <p className="px-2 py-3 text-xs leading-5 text-slate-500">
+                      没有找到匹配的对话。可以尝试其他关键词。
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </aside>
+
+            <section className="flex min-h-[620px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h2 className="font-semibold text-slate-900">
+                  {conversations.find((item) => item.id === activeConversationId)?.title ?? "新对话"}
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  你可以接着追问，AI 会参考本段对话的上下文。
+                </p>
+              </div>
+
+              <div className="flex-1 space-y-5 overflow-y-auto p-5">
+                {messagesLoading ? (
+                  <p className="text-sm text-slate-500">正在加载对话内容…</p>
+                ) : messages.length === 0 ? (
+                  <div className="mx-auto mt-16 max-w-md text-center">
+                    <div className="text-4xl">✦</div>
+                    <h3 className="mt-4 text-lg font-semibold text-slate-900">开始一段新对话</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      例如先问“什么是 RAG？”，再问“它有哪些核心组成部分？”，看看 AI 能否理解“它”指什么。
+                    </p>
+                  </div>
+                ) : (
+                  messages.map((item) => (
+                    <article
+                      key={item.id}
+                      className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[90%] rounded-2xl px-4 py-3 ${item.role === "user" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-800"}`}
+                      >
+                        <p className="mb-1 text-xs font-semibold opacity-70">
+                          {item.role === "user" ? "你" : "DeepSeek"}
+                        </p>
+                        {item.role === "assistant" ? (
+                          <>
+                            <MarkdownContent content={getDisplayedAnswer(item)} />
+                            {(messageSources[item.id]?.length ?? 0) > 0 ? (
+                              <details className="mt-4 rounded-xl border border-indigo-100 bg-white/80 p-3">
+                                <summary className="cursor-pointer text-xs font-semibold text-indigo-700">
+                                  参考知识来源（{messageSources[item.id].length}）
+                                </summary>
+                                <div className="mt-3 space-y-3">
+                                  {messageSources[item.id].map((source) => (
+                                    <div key={`${source.message_id}-${source.source_order}`} className="rounded-lg bg-slate-50 p-3">
+                                      <p className="text-xs font-semibold text-slate-700">
+                                        {source.title} · 第 {source.chunk_index + 1} 段
+                                      </p>
+                                      <p className="mt-1 text-[11px] text-slate-400">
+                                        向量相似度：{(source.similarity * 100).toFixed(1)}%
+                                      </p>
+                                      <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-slate-600">
+                                        {source.content}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            ) : null}
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                              {(messageVersions[item.id]?.length ?? 0) > 0 ? (
+                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                  <button
+                                    type="button"
+                                    onClick={() => changeDisplayedVersion(
+                                      item.id,
+                                      Math.max(0, (displayedVersionIndexes[item.id] ?? messageVersions[item.id].length) - 1),
+                                    )}
+                                    disabled={(displayedVersionIndexes[item.id] ?? messageVersions[item.id].length) <= 0}
+                                    className="rounded-md px-2 py-1 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    上一版
+                                  </button>
+                                  <span>
+                                    第 {(displayedVersionIndexes[item.id] ?? messageVersions[item.id].length) + 1} 版 / 共 {messageVersions[item.id].length + 1} 版
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => changeDisplayedVersion(
+                                      item.id,
+                                      Math.min(messageVersions[item.id].length, (displayedVersionIndexes[item.id] ?? messageVersions[item.id].length) + 1),
+                                    )}
+                                    disabled={(displayedVersionIndexes[item.id] ?? messageVersions[item.id].length) >= messageVersions[item.id].length}
+                                    className="rounded-md px-2 py-1 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    下一版
+                                  </button>
+                                </div>
+                              ) : <span />}
+                              <button
+                                type="button"
+                                onClick={() => void regenerateAnswer(item)}
+                                disabled={loading || messagesLoading || regeneratingMessageId !== null}
+                                className="rounded-lg px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {regeneratingMessageId === item.id ? "正在重新生成…" : "重新生成"}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                            {item.content}
+                          </p>
+                        )}
+                      </div>
+                    </article>
+                  ))
+                )}
+
+                {loading ? (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
+                      DeepSeek 正在结合上下文思考…
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <form onSubmit={handleSubmit} className="border-t border-slate-100 p-4">
+                <label htmlFor="chat-question" className="sr-only">输入消息</label>
+                <textarea
+                  id="chat-question"
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder="继续提问…（Enter 发送，Shift + Enter 换行）"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      event.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                  className="w-full resize-y rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="text-xs text-slate-400">{question.length}/2000</span>
+                  <button
+                    type="submit"
+                    disabled={loading || !question.trim() || messagesLoading || regeneratingMessageId !== null}
+                    className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading ? "正在生成…" : "发送"}
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+          </>
+        )}
+
+        {legacyHistory.length > 0 ? (
+          <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="font-semibold text-slate-900">旧版单次问答记录</h2>
+            <p className="mt-1 text-xs text-slate-500">升级前的记录仍然保留，不会自动混入新的多轮会话。</p>
+            <div className="mt-3 divide-y divide-slate-100">
+              {legacyHistory.map((item) => (
+                <article key={item.id} className="py-3">
+                  <button
+                    type="button"
+                    onClick={() => setLegacyExpandedId((current) => current === item.id ? null : item.id)}
+                    className="w-full text-left"
+                  >
+                    <span className="block text-sm font-medium text-slate-800">{item.question}</span>
+                    <span className="mt-1 block text-xs text-slate-400">{new Date(item.created_at).toLocaleString()}</span>
+                  </button>
+                  {legacyExpandedId === item.id && item.answer ? (
+                    <div className="mt-2 rounded-xl bg-slate-50 p-4">
+                      <MarkdownContent content={item.answer} />
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <p className="mt-5 text-xs leading-5 text-slate-500">
+          安全提示：DeepSeek API Key 只保存在 Supabase Edge Function Secrets 中。会话和消息通过 RLS 限制为当前登录用户可访问。
+        </p>
+      </div>
+    </main>
+  );
+}
+
+[executed on device: conressdeMacBook-Pro.local (28fd04e3-c471-4b7a-a8e5-5047aefef284)]
