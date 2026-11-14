@@ -30,8 +30,8 @@ export default function LoginPage() {
       return;
     }
 
-    // Perform a full navigation after Supabase has persisted the auth cookies.
-    window.location.assign("/dashboard");
+    // Navigate only after Supabase has persisted the auth cookies.
+    window.location.assign("/edge-demo");
   }
 
   return (
@@ -48,7 +48,7 @@ export default function LoginPage() {
             欢迎回来
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            登录你的账户，进入个人工作台。
+            登录你的账户，直接进入 AI 对话。
           </p>
         </div>
 
