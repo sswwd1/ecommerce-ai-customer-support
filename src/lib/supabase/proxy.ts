@@ -40,7 +40,20 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Verify the JWT and let Supabase SSR refresh the session when needed.
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+
+  // Protect the AI chat page at the server boundary, not only in the UI.
+  if (request.nextUrl.pathname === "/edge-demo" && !data?.claims?.sub) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("next", "/edge-demo");
+
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
+  }
 
   return supabaseResponse;
 }
