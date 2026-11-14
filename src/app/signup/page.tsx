@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -38,8 +36,8 @@ export default function SignupPage() {
     }
 
     if (data.session) {
-      router.replace("/dashboard");
-      router.refresh();
+      // Use a full navigation so the newly-created session cookie is available.
+      window.location.assign("/edge-demo");
       return;
     }
 
@@ -60,7 +58,7 @@ export default function SignupPage() {
             创建账户
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            使用邮箱和密码注册，开始体验身份验证。
+            注册后即可进入 AI 对话。
           </p>
         </div>
 
